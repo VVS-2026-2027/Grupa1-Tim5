@@ -1,0 +1,1213 @@
+@model ezZkvi.ViewModels.SimulacijaKvizaViewModel
+
+@{
+    ViewData["Title"] = "Simulacija kviza";
+
+    var imaRezultat = Model.Result != null;
+    var imaPitanja = Model.Questions != null && Model.Questions.Any() && !imaRezultat;
+
+    var totalSeconds = Model.PreostaloSekundi > 0
+        ? Model.PreostaloSekundi
+        : Model.VremenskoOgranicenjeMinuta * 60;
+
+    var pocetniIndex = Model.PocetniIndex;
+}
+
+@section Styles {
+    <style>
+        :root {
+            --bg: #070b12;
+            --card: #111a29;
+            --card2: #0d1421;
+            --border: #21324b;
+            --accent: #00e5ff;
+            --yellow: #ffcc00;
+            --orange: #f59e0b;
+            --text: #e8edf5;
+            --muted: #6f85a5;
+            --success: #00e676;
+            --danger: #ff5252;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Nunito Sans', sans-serif;
+        }
+
+        .simulation-page {
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 34px 18px 60px;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 34px;
+            padding: 0 14px;
+            margin-bottom: 18px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #0e1726;
+            color: var(--muted);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+            transition: 0.2s ease;
+        }
+
+            .back-btn:hover {
+                color: var(--accent);
+                border-color: var(--accent);
+                background: rgba(0, 229, 255, 0.06);
+                text-decoration: none;
+            }
+
+        .page-heading {
+            margin-bottom: 22px;
+        }
+
+        .page-title {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 2.05rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            line-height: 1;
+            color: #ffffff;
+            margin: 0;
+        }
+
+            .page-title span {
+                color: var(--accent);
+            }
+
+        .page-subtitle {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .alert-error {
+            width: 100%;
+            background: rgba(255, 82, 82, 0.08);
+            border: 1px solid rgba(255, 82, 82, 0.35);
+            color: #ff8a8a;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 0.86rem;
+            line-height: 1.45;
+            margin-bottom: 18px;
+        }
+
+        .simulation-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.28);
+        }
+
+            .simulation-card + .simulation-card {
+                margin-top: 18px;
+            }
+
+        .active-session-note {
+            position: relative;
+            min-height: 150px;
+            background: rgba(0, 229, 255, 0.06);
+            border: 1px solid rgba(0, 229, 255, 0.28);
+            padding: 24px;
+            padding-right: 195px;
+        }
+
+        .active-session-content {
+            max-width: 450px;
+        }
+
+        .active-session-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 14px;
+            margin-top: 18px;
+        }
+
+        .active-session-time {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            width: 135px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 204, 0, 0.35);
+            background: rgba(255, 204, 0, 0.08);
+            text-align: center;
+        }
+
+        .active-session-time-label {
+            color: var(--muted);
+            font-size: 0.67rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+
+        .active-session-time-value {
+            color: var(--yellow);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.45rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .section-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 18px;
+            color: var(--muted);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+            .section-label::before {
+                content: "";
+                width: 3px;
+                height: 14px;
+                border-radius: 2px;
+                background: var(--accent);
+            }
+
+        .form-description {
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.55;
+            margin-bottom: 22px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--muted);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 1.7px;
+            text-transform: uppercase;
+        }
+
+        .simulation-select {
+            width: 100%;
+            height: 46px;
+            background: #0b1220;
+            color: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 0 13px;
+            font-size: 0.92rem;
+            font-family: 'Nunito Sans', sans-serif;
+            outline: none;
+            cursor: pointer;
+        }
+
+            .simulation-select:focus {
+                border-color: var(--accent);
+                box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.12);
+            }
+
+        .inline-error {
+            display: none;
+            margin-top: 10px;
+            color: #ff8a8a;
+            font-size: 0.84rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .btn-main,
+        .btn-secondary {
+            min-height: 42px;
+            padding: 0 17px;
+            border-radius: 9px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .btn-main {
+            background: var(--accent);
+            border: 1px solid var(--accent);
+            color: #06101a;
+        }
+
+            .btn-main:hover {
+                background: #7cf3ff;
+                border-color: #7cf3ff;
+                color: #06101a;
+                text-decoration: none;
+                transform: translateY(-1px);
+            }
+
+            .btn-main:disabled {
+                opacity: 0.65;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+        .btn-secondary {
+            background: #0e1726;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+            .btn-secondary:hover {
+                border-color: var(--accent);
+                color: var(--accent);
+                background: rgba(0, 229, 255, 0.06);
+                text-decoration: none;
+                transform: translateY(-1px);
+            }
+
+        .quiz-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 22px;
+            flex-wrap: wrap;
+        }
+
+        .quiz-meta {
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .timer-box {
+            min-width: 116px;
+            padding: 10px 14px;
+            border-radius: 11px;
+            border: 1px solid rgba(255, 204, 0, 0.35);
+            background: rgba(255, 204, 0, 0.08);
+            text-align: center;
+        }
+
+        .timer-label {
+            color: var(--muted);
+            font-size: 0.67rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .timer-value {
+            color: var(--yellow);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.55rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .quiz-progress {
+            margin-bottom: 18px;
+        }
+
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--muted);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 1.4px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: #0a111d;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            border-radius: 999px;
+            transition: width 0.25s ease;
+        }
+
+        .question-card {
+            display: none;
+            background: var(--card2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 14px;
+            animation: fadeQuestion 0.25s ease both;
+        }
+
+            .question-card.active {
+                display: block;
+            }
+
+            .question-card.answered {
+                border-color: rgba(0, 230, 118, 0.28);
+            }
+
+            .question-card.skipped {
+                border-color: rgba(245, 158, 11, 0.32);
+            }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .question-number {
+            color: var(--accent);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 1.4px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .question-text {
+            color: #ffffff;
+            font-size: 1.05rem;
+            font-weight: 800;
+            line-height: 1.5;
+        }
+
+        .answers {
+            display: grid;
+            gap: 9px;
+        }
+
+        .answer-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 13px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: rgba(7, 11, 18, 0.55);
+            color: var(--text);
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+            .answer-option:hover {
+                border-color: var(--accent);
+                background: rgba(0, 229, 255, 0.05);
+            }
+
+            .answer-option input {
+                accent-color: var(--accent);
+                cursor: pointer;
+            }
+
+            .answer-option:has(input:checked) {
+                border-color: var(--accent);
+                background: rgba(0, 229, 255, 0.1);
+                color: #ffffff;
+            }
+
+            .answer-option:has(input:disabled) {
+                cursor: default;
+            }
+
+        .locked-note {
+            display: none;
+            margin-top: 12px;
+            color: var(--success);
+            font-size: 0.84rem;
+            font-weight: 700;
+        }
+
+        .question-card.answered .locked-note {
+            display: block;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 13px;
+            margin: 20px 0;
+        }
+
+        .result-stat {
+            background: var(--card2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .result-label {
+            color: var(--muted);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 1.6px;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+        }
+
+        .result-value {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+            .result-value.accent {
+                color: var(--accent);
+            }
+
+            .result-value.success {
+                color: var(--success);
+            }
+
+            .result-value.danger {
+                color: var(--danger);
+            }
+
+        .answers-review {
+            margin-top: 26px;
+        }
+
+        .review-item {
+            background: var(--card2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .review-question {
+            color: #ffffff;
+            font-weight: 800;
+            line-height: 1.45;
+            margin-bottom: 10px;
+        }
+
+        .review-line {
+            color: var(--muted);
+            font-size: 0.88rem;
+            margin-top: 5px;
+        }
+
+            .review-line strong {
+                color: var(--text);
+            }
+
+        .review-status {
+            display: inline-block;
+            margin-top: 11px;
+            border-radius: 999px;
+            padding: 5px 9px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            letter-spacing: 1.3px;
+            text-transform: uppercase;
+        }
+
+            .review-status.ok {
+                color: var(--success);
+                background: rgba(0, 230, 118, 0.08);
+                border: 1px solid rgba(0, 230, 118, 0.3);
+            }
+
+            .review-status.bad {
+                color: var(--danger);
+                background: rgba(255, 82, 82, 0.08);
+                border: 1px solid rgba(255, 82, 82, 0.3);
+            }
+
+            .review-status.skip {
+                color: var(--orange);
+                background: rgba(245, 158, 11, 0.08);
+                border: 1px solid rgba(245, 158, 11, 0.3);
+            }
+
+        @@keyframes fadeQuestion {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @@media (max-width: 768px) {
+            .simulation-page {
+                padding: 24px 14px 45px;
+            }
+
+            .simulation-card {
+                padding: 20px;
+            }
+
+            .active-session-note {
+                padding-right: 20px;
+                padding-top: 125px;
+                min-height: auto;
+            }
+
+            .active-session-time {
+                top: 20px;
+                right: 20px;
+            }
+
+            .active-session-content {
+                max-width: 100%;
+            }
+
+            .result-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+                .actions .btn-main,
+                .actions .btn-secondary {
+                    width: 100%;
+                }
+        }
+
+        @@media (max-width: 520px) {
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .quiz-top {
+                align-items: stretch;
+            }
+
+            .timer-box {
+                width: 100%;
+            }
+
+            .active-session-note {
+                padding-top: 130px;
+            }
+
+            .active-session-time {
+                left: 20px;
+                right: auto;
+                width: calc(100% - 40px);
+            }
+
+            .active-session-row .btn-main {
+                width: 100%;
+            }
+        }
+    </style>
+}
+
+<div class="simulation-page">
+
+    <a asp-controller="Student" asp-action="Dashboard" class="back-btn">
+        ← Nazad
+    </a>
+
+    <div class="page-heading">
+        <h1 class="page-title">Simulacija <span>kviza</span></h1>
+
+        <div class="page-subtitle">
+            Kviz traje 3 minute, ima 5 ABCD pitanja: 1 teško, 2 srednja i 2 laka.
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert-error">
+            @Model.ErrorMessage
+        </div>
+    }
+
+    @if (imaRezultat)
+    {
+        <div class="simulation-card">
+            <div class="section-label">Rezultat simulacije</div>
+
+            <div class="result-grid">
+                <div class="result-stat">
+                    <div class="result-label">Poeni</div>
+                    <div class="result-value accent">@Model.Result!.OsvojeniPoeni.ToString("0.00")</div>
+                </div>
+
+                <div class="result-stat">
+                    <div class="result-label">Tačno</div>
+                    <div class="result-value success">@Model.Result.TacnihOdgovora</div>
+                </div>
+
+                <div class="result-stat">
+                    <div class="result-label">Netačno</div>
+                    <div class="result-value danger">@Model.Result.NetacnihOdgovora</div>
+                </div>
+
+                <div class="result-stat">
+                    <div class="result-label">Preskočeno</div>
+                    <div class="result-value">@Model.Result.Neodgovorenih</div>
+                </div>
+            </div>
+
+            <div class="quiz-meta">
+                Maksimalno: @Model.Result.MaksimalniPoeni.ToString("0.00") poena · Procenat: @Model.Result.Procenat% · Utrošeno vrijeme: @TimeSpan.FromSeconds(Model.Result.UtrosenoSekundi).ToString(@"mm\:ss")
+            </div>
+
+            <div class="actions">
+                <a asp-controller="Student" asp-action="Simulate" class="btn-main">
+                    Nova simulacija
+                </a>
+
+                <a asp-controller="Student" asp-action="Dashboard" class="btn-secondary">
+                    Nazad na dashboard
+                </a>
+            </div>
+
+            <div class="answers-review">
+                <div class="section-label">Pregled odgovora</div>
+
+                @foreach (var item in Model.Result.Pregled)
+                {
+                    <div class="review-item">
+                        <div class="review-question">@item.TekstPitanja</div>
+
+                        <div class="review-line">
+                            <strong>Tvoj odgovor:</strong>
+                            @(item.KorisnickiOdgovor ?? "Nije odgovoreno")
+                        </div>
+
+                        <div class="review-line">
+                            <strong>Tačan odgovor:</strong>
+                            @item.TacanOdgovor
+                        </div>
+
+                        <div class="review-line">
+                            <strong>Poeni:</strong>
+                            @item.OsvojeniPoeni.ToString("0.00")
+                        </div>
+
+                        @if (item.JePreskoceno)
+                        {
+                            <span class="review-status skip">Preskočeno</span>
+                        }
+                        else if (item.JeTacno)
+                        {
+                            <span class="review-status ok">Tačno</span>
+                        }
+                        else
+                        {
+                            <span class="review-status bad">Netačno</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else if (imaPitanja)
+    {
+        <div class="simulation-card">
+            <div class="quiz-top">
+                <div>
+                    <div class="section-label">Aktivna simulacija</div>
+                    <div class="quiz-meta">
+                        Predmet: @Model.PredmetNaziv<br />
+                        Oblast: @(Model.OblastNaziv ?? "Odabrana oblast")<br />
+                        Broj pitanja: @Model.BrojPitanja<br />
+                        Bodovanje: +0.10 tačno, -0.03 netačno, 0 preskočeno
+                    </div>
+                </div>
+
+                <div class="timer-box">
+                    <div class="timer-label">Vrijeme</div>
+                    <div class="timer-value" id="timer" data-seconds="@totalSeconds">00:00</div>
+                </div>
+            </div>
+
+            <div class="quiz-progress">
+                <div class="progress-text">
+                    <span id="progressCurrent">Pitanje @(pocetniIndex + 1)</span>
+                    <span id="progressTotal">od @Model.Questions.Count</span>
+                </div>
+
+                <div class="progress-track">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+
+            <form asp-controller="Student" asp-action="SubmitSimulation" method="post" id="quizForm">
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" name="KvizSesijaId" id="kvizSesijaId" value="@Model.KvizSesijaId" />
+                <input type="hidden" name="PredmetId" value="@Model.PredmetId" />
+                <input type="hidden" name="OblastId" value="@Model.OblastId" />
+                <input type="hidden" name="StartedAtUtcTicks" value="@Model.StartedAtUtcTicks" />
+                <input type="hidden" name="TotalSeconds" value="@totalSeconds" />
+
+                @for (var i = 0; i < Model.Questions.Count; i++)
+                {
+                    var pitanje = Model.Questions[i];
+
+                    <div class="question-card @(i == pocetniIndex ? "active" : "") @(pitanje.JeZakljucano ? "answered" : "") @(pitanje.JePreskoceno ? "skipped" : "")"
+                         data-question-index="@i"
+                         data-pitanje-id="@pitanje.Id">
+
+                        <input type="hidden" name="@($"Odgovori[{i}].PitanjeId")" value="@pitanje.Id" />
+
+                        <div class="question-header">
+                            <div>
+                                <div class="question-number">Pitanje @(i + 1)</div>
+                                <div class="question-text">@pitanje.TekstPitanja</div>
+                            </div>
+
+                        </div>
+
+                        <div class="answers">
+                            @for (var j = 0; j < pitanje.Odgovori.Count; j++)
+                            {
+                                var odgovor = pitanje.Odgovori[j];
+                                var radioId = $"q{i}_a{j}";
+                                var isChecked = pitanje.OdabraniOdgovorId == odgovor.Id;
+                                var isDisabled = pitanje.JeZakljucano;
+
+                                <label class="answer-option" for="@radioId">
+                                    <input type="radio"
+                                           id="@radioId"
+                                           name="@($"Odgovori[{i}].OdgovorId")"
+                                           value="@odgovor.Id"
+                                           checked="@isChecked"
+                                           disabled="@isDisabled" />
+
+                                    <span>@odgovor.Tekst</span>
+                                </label>
+                            }
+                        </div>
+
+                        <div class="inline-error question-error">
+                            Moraš odabrati odgovor ili preskočiti pitanje.
+                        </div>
+
+                        <div class="locked-note">
+                            @(pitanje.JePreskoceno ? "Pitanje je preskočeno. Ne možeš se vratiti na njega." : "Odgovor je potvrđen. Ne možeš ga više mijenjati.")
+                        </div>
+                    </div>
+                }
+
+                <div class="actions">
+                    <button type="button" class="btn-main" id="nextQuestionBtn">
+                        Potvrdi odgovor
+                    </button>
+
+                    <button type="button" class="btn-secondary" id="skipQuestionBtn">
+                        Preskoči pitanje
+                    </button>
+                </div>
+            </form>
+        </div>
+    }
+    else
+    {
+        @if (Model.AktivnaSesijaId.HasValue)
+        {
+            <div class="simulation-card active-session-note">
+                <div class="active-session-time">
+                    <div class="active-session-time-label">Preostalo vrijeme</div>
+                    <div class="active-session-time-value"
+                         data-remaining-timer="@Model.PreostaloSekundi">
+                        00:00
+                    </div>
+                </div>
+
+                <div class="active-session-content">
+                    <div class="section-label">Aktivna simulacija</div>
+
+                    <p class="form-description">
+                        Imaš započetu simulaciju iz predmeta @Model.AktivnaSesijaPredmetNaziv
+                        @if (!string.IsNullOrWhiteSpace(Model.AktivnaSesijaOblastNaziv))
+                        {
+                            <text> / oblast @Model.AktivnaSesijaOblastNaziv</text>
+                        }.
+                        Možeš nastaviti dok vrijeme ne istekne.
+                    </p>
+
+                    <div class="active-session-row">
+                        <a asp-controller="Student"
+                           asp-action="ContinueSimulation"
+                           asp-route-kvizSesijaId="@Model.AktivnaSesijaId"
+                           class="btn-main">
+                            Nastavi kviz
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="simulation-card">
+            <div class="section-label">Pokretanje simulacije</div>
+
+            <p class="form-description">
+                Odaberi predmet i oblast. Sistem izvlači 1 teško, 2 srednja i 2 laka ABCD pitanja iz odabrane oblasti.
+            </p>
+
+            <form asp-controller="Student" asp-action="StartSimulation" method="post" id="startSimulationForm">
+                @Html.AntiForgeryToken()
+
+                <div class="form-group">
+                    <label asp-for="PredmetId" class="form-label">Predmet</label>
+
+                    <select asp-for="PredmetId"
+                            asp-items="Model.Predmeti"
+                            class="simulation-select"
+                            id="predmetSelect">
+                        <option value="">-- Odaberi predmet --</option>
+                    </select>
+
+                    <div class="inline-error" id="predmetError">
+                        Moraš odabrati predmet prije pokretanja simulacije.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="OblastId" class="form-label">Oblast</label>
+
+                    <select asp-for="OblastId"
+                            class="simulation-select"
+                            id="oblastSelect">
+                        <option value="">-- Prvo odaberi predmet --</option>
+                        @foreach (var oblast in Model.Oblasti)
+                        {
+                            <option value="@oblast.Id"
+                                    data-predmet-id="@oblast.PredmetId">
+                                @oblast.PredmetNaziv / @oblast.Naziv
+                            </option>
+                        }
+                    </select>
+
+                    <div class="inline-error" id="oblastError">
+                        Moraš odabrati oblast prije pokretanja simulacije.
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="submit" class="btn-main">
+                        Pokreni simulaciju
+                    </button>
+                </div>
+            </form>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        const startForm = document.getElementById('startSimulationForm');
+
+        const predmetSelect = document.getElementById('predmetSelect');
+        const oblastSelect = document.getElementById('oblastSelect');
+
+        function filterOblastiZaPredmet() {
+            if (!predmetSelect || !oblastSelect) {
+                return;
+            }
+
+            const predmetId = predmetSelect.value;
+
+            Array.from(oblastSelect.options).forEach(function (option) {
+                const optionPredmetId = option.getAttribute('data-predmet-id');
+
+                if (!optionPredmetId) {
+                    option.hidden = false;
+                    option.disabled = false;
+                    return;
+                }
+
+                const visible = predmetId && optionPredmetId === predmetId;
+                option.hidden = !visible;
+                option.disabled = !visible;
+            });
+
+            if (oblastSelect.selectedOptions.length && oblastSelect.selectedOptions[0].disabled) {
+                oblastSelect.value = '';
+            }
+        }
+
+        if (predmetSelect) {
+            predmetSelect.addEventListener('change', filterOblastiZaPredmet);
+            filterOblastiZaPredmet();
+        }
+
+        if (startForm) {
+            startForm.addEventListener('submit', function (event) {
+                const predmetError = document.getElementById('predmetError');
+                const oblastError = document.getElementById('oblastError');
+                let valid = true;
+
+                if (!predmetSelect.value) {
+                    predmetError.style.display = 'block';
+                    valid = false;
+                } else {
+                    predmetError.style.display = 'none';
+                }
+
+                if (!oblastSelect.value) {
+                    oblastError.style.display = 'block';
+                    valid = false;
+                } else {
+                    oblastError.style.display = 'none';
+                }
+
+                if (!valid) {
+                    event.preventDefault();
+                    (!predmetSelect.value ? predmetSelect : oblastSelect).focus();
+                }
+            });
+        }
+
+        const quizForm = document.getElementById('quizForm');
+        const questionCards = Array.from(document.querySelectorAll('.question-card'));
+        const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+        const skipQuestionBtn = document.getElementById('skipQuestionBtn');
+        const progressCurrent = document.getElementById('progressCurrent');
+        const progressFill = document.getElementById('progressFill');
+
+        let currentQuestionIndex = @pocetniIndex;
+
+        function updateQuestionProgress() {
+            if (!questionCards.length || !progressCurrent || !progressFill || !nextQuestionBtn) {
+                return;
+            }
+
+            const currentNumber = currentQuestionIndex + 1;
+            const total = questionCards.length;
+            const percent = (currentNumber / total) * 100;
+
+            progressCurrent.textContent = 'Pitanje ' + currentNumber;
+            progressFill.style.width = percent + '%';
+
+            if (currentQuestionIndex === total - 1) {
+                nextQuestionBtn.textContent = 'Završi simulaciju';
+
+                if (skipQuestionBtn) {
+                    skipQuestionBtn.textContent = 'Preskoči i završi';
+                }
+            } else {
+                nextQuestionBtn.textContent = 'Potvrdi odgovor';
+
+                if (skipQuestionBtn) {
+                    skipQuestionBtn.textContent = 'Preskoči pitanje';
+                }
+            }
+        }
+
+        function showQuestion(index) {
+            questionCards.forEach(function (card, cardIndex) {
+                card.classList.toggle('active', cardIndex === index);
+            });
+
+            updateQuestionProgress();
+        }
+
+        function moveToNextQuestionOrSubmit() {
+            if (currentQuestionIndex < questionCards.length - 1) {
+                currentQuestionIndex++;
+                showQuestion(currentQuestionIndex);
+                nextQuestionBtn.disabled = false;
+
+                if (skipQuestionBtn) {
+                    skipQuestionBtn.disabled = false;
+                }
+            } else {
+                quizForm.submit();
+            }
+        }
+
+        async function lockCurrentQuestion(shouldSkip) {
+            const currentCard = questionCards[currentQuestionIndex];
+            const selectedAnswer = currentCard.querySelector('input[type="radio"]:checked');
+            const errorMessage = currentCard.querySelector('.question-error');
+
+            if (currentCard.classList.contains('answered')) {
+                moveToNextQuestionOrSubmit();
+                return;
+            }
+
+            if (!shouldSkip && !selectedAnswer) {
+                errorMessage.textContent = 'Moraš odabrati odgovor ili preskočiti pitanje.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            nextQuestionBtn.disabled = true;
+
+            if (skipQuestionBtn) {
+                skipQuestionBtn.disabled = true;
+            }
+
+            const token = quizForm.querySelector('input[name="__RequestVerificationToken"]').value;
+            const kvizSesijaId = document.getElementById('kvizSesijaId').value;
+
+            const formData = new FormData();
+            formData.append('__RequestVerificationToken', token);
+            formData.append('KvizSesijaId', kvizSesijaId);
+            formData.append('PitanjeId', currentCard.dataset.pitanjeId);
+
+            if (!shouldSkip && selectedAnswer) {
+                formData.append('OdgovorId', selectedAnswer.value);
+            }
+
+            const response = await fetch('@Url.Action("SaveSimulationAnswer", "Student")', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                errorMessage.textContent = 'Pitanje nije snimljeno. Vrijeme je možda isteklo.';
+                errorMessage.style.display = 'block';
+                nextQuestionBtn.disabled = false;
+
+                if (skipQuestionBtn) {
+                    skipQuestionBtn.disabled = false;
+                }
+
+                return;
+            }
+
+            errorMessage.style.display = 'none';
+            currentCard.classList.add('answered');
+
+            if (shouldSkip) {
+                currentCard.classList.add('skipped');
+            }
+
+            currentCard.querySelectorAll('input[type="radio"]').forEach(function (radio) {
+                radio.disabled = true;
+            });
+
+            moveToNextQuestionOrSubmit();
+        }
+
+        if (nextQuestionBtn && quizForm && questionCards.length) {
+            showQuestion(currentQuestionIndex);
+
+            nextQuestionBtn.addEventListener('click', function () {
+                lockCurrentQuestion(false);
+            });
+        }
+
+        if (skipQuestionBtn && quizForm && questionCards.length) {
+            skipQuestionBtn.addEventListener('click', function () {
+                lockCurrentQuestion(true);
+            });
+        }
+
+        const timer = document.getElementById('timer');
+
+        if (timer && quizForm) {
+            const initialSeconds = parseInt(timer.dataset.seconds || '600', 10);
+            const deadline = Date.now() + Math.max(initialSeconds, 0) * 1000;
+            let timerSubmitted = false;
+            let interval = null;
+
+            function renderTimer() {
+                const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+                const minutes = Math.floor(remaining / 60);
+                const seconds = remaining % 60;
+
+                timer.textContent =
+                    minutes.toString().padStart(2, '0') + ':' +
+                    seconds.toString().padStart(2, '0');
+
+                if (remaining <= 0 && !timerSubmitted) {
+                    timerSubmitted = true;
+
+                    if (interval) {
+                        clearInterval(interval);
+                    }
+
+                    quizForm.submit();
+                }
+            }
+
+            renderTimer();
+            interval = setInterval(renderTimer, 1000);
+            document.addEventListener('visibilitychange', renderTimer);
+            window.addEventListener('focus', renderTimer);
+        }
+
+        function formatRemainingTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+
+            return minutes.toString().padStart(2, '0') + ':' +
+                seconds.toString().padStart(2, '0');
+        }
+
+        document.querySelectorAll('[data-remaining-timer]').forEach(function (timerElement) {
+            let remaining = parseInt(timerElement.dataset.remainingTimer || '0');
+
+            function renderRemainingTimer() {
+                timerElement.textContent = formatRemainingTime(Math.max(remaining, 0));
+            }
+
+            renderRemainingTimer();
+
+            const interval = setInterval(function () {
+                remaining--;
+
+                if (remaining <= 0) {
+                    clearInterval(interval);
+                    timerElement.textContent = 'Isteklo';
+                    return;
+                }
+
+                renderRemainingTimer();
+            }, 1000);
+        });
+    </script>
+}
