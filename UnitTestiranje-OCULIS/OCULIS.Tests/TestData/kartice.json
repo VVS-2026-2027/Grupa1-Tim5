@@ -1,0 +1,7 @@
+[
+  { "Kartica": null, "Status": "Odbijeno" },
+  { "Kartica": "", "Status": "Odbijeno" },
+  { "Kartica": "123456789012", "Status": "Odbijeno" },
+  { "Kartica": "9999999990000", "Status": "Odbijeno" },
+  { "Kartica": "9999999991234", "Status": "Uspjesno" }
+]
