@@ -49,7 +49,24 @@ public class KorpaControllerTests
         var stavka = await db.StavkaKorpe.SingleAsync();
         Assert.AreEqual(3, stavka.Kolicina);
         Assert.AreEqual(20d, stavka.Cijena);
+    }
 
+    [TestMethod]
+    [TestCategory("PoznatiDefekt")]
+    public async Task Dodaj_PostojecaStavka_SpremljeniZbirJe60KM()
+    {
+        await using var db = TestContextFactory.Create();
+        var kupac = new Korisnik { Id = "kupac" };
+        var proizvod = new Proizvod { Id = 1, Naziv = "Okvir", DostupnaKolicina = 5, Cijena = 20 };
+        var korpa = new Korpa { Id = 2, Korisnik = kupac };
+        db.Add(new StavkaKorpe { Korpa = korpa, Proizvod = proizvod, Kolicina = 1, Cijena = 19 });
+        await db.SaveChangesAsync();
+        var controller = Controller(db, kupac, Mock.Of<IPopustKalkulatorService>());
+
+        await controller.Dodaj(1, 2);
+        db.ChangeTracker.Clear();
+
+        Assert.AreEqual(60d, (await db.Korpa.SingleAsync()).UkupnaCijena);
     }
 
     [TestMethod]
@@ -115,7 +132,7 @@ public class KorpaControllerTests
         Assert.AreEqual(2, model.KorpaId);
         Assert.AreSame(cijene, model.Popust);
         Assert.AreEqual(40d, model.Korpa.UkupnaCijena);
-        Assert.AreEqual(1, model.Korpa.Stavke.Count);
+        Assert.AreEqual(40d, model.Korpa.Stavke.Single().Ukupno);
         popust.Verify(s => s.IzracunajPopustAsync(kupac.Id, 2), Times.AtLeastOnce);
     }
 
@@ -130,5 +147,54 @@ public class KorpaControllerTests
             ControllerContext = new ControllerContext { HttpContext = context },
             TempData = new TempDataDictionary(context, Mock.Of<ITempDataProvider>())
         };
+    }
+
+    [TestMethod]
+    public async Task Dodaj_NepostojeciProizvod_VracaNotFoundBezKreiranjaKorpe()
+    {
+        await using var db = TestContextFactory.Create();
+        var controller = Controller(db, new Korisnik { Id = "kupac" }, Mock.Of<IPopustKalkulatorService>());
+
+        var rezultat = await controller.Dodaj(404);
+
+        Assert.IsInstanceOfType<NotFoundResult>(rezultat);
+        Assert.IsFalse(await db.Korpa.AnyAsync());
+    }
+
+    [TestMethod]
+    public async Task Dodaj_NovaStavkaNaGraniciZalihe_SpremaStavkuIVracaNaKatalog()
+    {
+        await using var db = TestContextFactory.Create();
+        db.Proizvod.Add(new Proizvod { Id = 1, Naziv = "Okvir", DostupnaKolicina = 2, Cijena = 20 });
+        await db.SaveChangesAsync();
+        var controller = Controller(db, new Korisnik { Id = "kupac" }, Mock.Of<IPopustKalkulatorService>());
+        controller.Request.Headers.Referer = "/Proizvod?Pretraga=okvir";
+
+        var rezultat = (RedirectResult)await controller.Dodaj(1, 2);
+        db.ChangeTracker.Clear();
+
+        var stavka = await db.StavkaKorpe.SingleAsync();
+        Assert.AreEqual("/Proizvod?Pretraga=okvir", rezultat.Url);
+        Assert.AreEqual(2, stavka.Kolicina);
+        Assert.AreEqual(1, stavka.IdProizvod);
+        Assert.AreEqual(20d, stavka.Cijena);
+        Assert.AreEqual((await db.Korpa.SingleAsync()).Id, stavka.IdKorpa);
+    }
+
+    [TestMethod]
+    public async Task Index_PraznaKorpa_VracaPrazanModelBezIzracunaPopusta()
+    {
+        await using var db = TestContextFactory.Create();
+        var popust = new Mock<IPopustKalkulatorService>(MockBehavior.Strict);
+        var controller = Controller(db, new Korisnik { Id = "kupac" }, popust.Object);
+
+        var rezultat = (ViewResult)await controller.Index();
+
+        var model = (KorpaViewModel)rezultat.Model!;
+        Assert.AreEqual((await db.Korpa.SingleAsync()).Id, model.KorpaId);
+        Assert.AreEqual(0d, model.UkupnaCijena);
+        Assert.AreEqual(0, model.Stavke.Count);
+        Assert.IsNull(model.Popust);
+        popust.VerifyNoOtherCalls();
     }
 }

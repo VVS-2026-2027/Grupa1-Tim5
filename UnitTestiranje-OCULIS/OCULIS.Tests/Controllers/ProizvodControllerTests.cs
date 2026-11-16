@@ -54,9 +54,7 @@ public class ProizvodControllerTests
     }
 
     [TestMethod]
-    [DataRow(true)]
-    [DataRow(false)]
-    public async Task Create_ValidnostModela_UpisujeSamoValidanProizvod(bool validan)
+    public async Task Create_ValidanProizvod_SpremaProizvodIPreusmjerava()
     {
         await using var db = TestContextFactory.Create();
         var controller = new ProizvodController(db)
@@ -64,27 +62,29 @@ public class ProizvodControllerTests
             TempData = new TempDataDictionary(new DefaultHttpContext(), Mock.Of<ITempDataProvider>())
         };
         var proizvod = new Proizvod { Naziv = "Okvir", Cijena = 40 };
-        if (!validan)
-            controller.ModelState.AddModelError(nameof(Proizvod.Naziv), "Naziv je obavezan.");
 
-        var rezultat = await controller.Create(proizvod);
+        var rezultat = (RedirectToActionResult)await controller.Create(proizvod);
 
-        if (validan)
-        {
-            Assert.AreEqual(nameof(ProizvodController.Index), ((RedirectToActionResult)rezultat).ActionName);
-            Assert.AreEqual(proizvod.Id, (await db.Proizvod.SingleAsync()).Id);
-        }
-        else
-        {
-            Assert.AreSame(proizvod, ((ViewResult)rezultat).Model);
-            Assert.IsFalse(await db.Proizvod.AnyAsync());
-        }
+        Assert.AreEqual(nameof(ProizvodController.Index), rezultat.ActionName);
+        Assert.AreEqual(proizvod.Id, (await db.Proizvod.SingleAsync()).Id);
     }
 
     [TestMethod]
-    [DataRow(true)]
-    [DataRow(false)]
-    public async Task Edit_PodudaranjeIdentifikatora_MijenjaSamoTrazeniProizvod(bool podudaraSe)
+    public async Task Create_NemaNaziva_VracaUnosBezUpisa()
+    {
+        await using var db = TestContextFactory.Create();
+        var controller = new ProizvodController(db);
+        controller.ModelState.AddModelError(nameof(Proizvod.Naziv), "Naziv je obavezan.");
+        var proizvod = new Proizvod { Cijena = 40 };
+
+        var rezultat = (ViewResult)await controller.Create(proizvod);
+
+        Assert.AreSame(proizvod, rezultat.Model);
+        Assert.IsFalse(await db.Proizvod.AnyAsync());
+    }
+
+    [TestMethod]
+    public async Task Edit_PodudaraSeIdentifikator_SpremaNovuCijenu()
     {
         await using var db = TestContextFactory.Create();
         db.Proizvod.Add(new Proizvod { Id = 7, Naziv = "Okvir", Cijena = 40 });
@@ -95,14 +95,25 @@ public class ProizvodControllerTests
             TempData = new TempDataDictionary(new DefaultHttpContext(), Mock.Of<ITempDataProvider>())
         };
 
-        var rezultat = await controller.Edit(podudaraSe ? 7 : 8, new Proizvod { Id = 7, Naziv = "Okvir", Cijena = 30 });
-
-        if (podudaraSe)
-            Assert.AreEqual(nameof(ProizvodController.Index), ((RedirectToActionResult)rezultat).ActionName);
-        else
-            Assert.IsInstanceOfType<NotFoundResult>(rezultat);
+        var rezultat = (RedirectToActionResult)await controller.Edit(7, new Proizvod { Id = 7, Naziv = "Okvir", Cijena = 30 });
         db.ChangeTracker.Clear();
-        Assert.AreEqual(podudaraSe ? 30d : 40d, (await db.Proizvod.SingleAsync()).Cijena);
+
+        Assert.AreEqual(nameof(ProizvodController.Index), rezultat.ActionName);
+        Assert.AreEqual(30d, (await db.Proizvod.SingleAsync()).Cijena);
+    }
+
+    [TestMethod]
+    public async Task Edit_IdentifikatoriSeNePodudaraju_VracaNotFoundBezUpisa()
+    {
+        await using var db = TestContextFactory.Create();
+        db.Proizvod.Add(new Proizvod { Id = 7, Naziv = "Okvir", Cijena = 40 });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var rezultat = await new ProizvodController(db).Edit(8, new Proizvod { Id = 7, Naziv = "Okvir", Cijena = 30 });
+
+        Assert.IsInstanceOfType<NotFoundResult>(rezultat);
+        Assert.AreEqual(40d, (await db.Proizvod.SingleAsync()).Cijena);
     }
 
     [TestMethod]
@@ -123,5 +134,96 @@ public class ProizvodControllerTests
         Assert.AreEqual(nameof(ProizvodController.Index), ((RedirectToActionResult)rezultat).ActionName);
         Assert.IsTrue(await db.Proizvod.AnyAsync(p => p.Id == ostaje));
         Assert.AreEqual(zaBrisanje == 99 ? 2 : 1, await db.Proizvod.CountAsync());
+    }
+
+    [TestMethod]
+    public async Task Details_PostojeciProizvod_VracaCijenuISliku()
+    {
+        await using var db = TestContextFactory.Create();
+        db.Proizvod.Add(new Proizvod { Id = 5, Cijena = 125, SlikaUrl = "/images/okvir.png" });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var rezultat = (ViewResult)await new ProizvodController(db).Details(5);
+
+        var proizvod = (Proizvod)rezultat.Model!;
+        Assert.AreEqual(125d, proizvod.Cijena);
+        Assert.AreEqual("/images/okvir.png", proizvod.SlikaUrl);
+    }
+
+    [TestMethod]
+    public void Create_FormaZaNoviProizvod_VracaPrazanModel()
+    {
+        using var db = TestContextFactory.Create();
+
+        var rezultat = (ViewResult)new ProizvodController(db).Create();
+
+        Assert.IsNull(rezultat.Model);
+    }
+
+    [TestMethod]
+    public async Task Edit_PostojeciId_VracaModelZaUredjivanje()
+    {
+        await using var db = TestContextFactory.Create();
+        db.Proizvod.Add(new Proizvod { Id = 5, Naziv = "Okvir" });
+        await db.SaveChangesAsync();
+
+        var rezultat = (ViewResult)await new ProizvodController(db).Edit(5);
+
+        Assert.AreEqual("Okvir", ((Proizvod)rezultat.Model!).Naziv);
+    }
+
+    [TestMethod]
+    [DataRow(null)]
+    [DataRow(404)]
+    public async Task Edit_NemaProizvoda_VracaNotFound(int? id)
+    {
+        await using var db = TestContextFactory.Create();
+
+        var rezultat = await new ProizvodController(db).Edit(id);
+
+        Assert.IsInstanceOfType<NotFoundResult>(rezultat);
+    }
+
+    [TestMethod]
+    public async Task Edit_NevalidnaCijena_VracaUnosBezPromjeneBaze()
+    {
+        await using var db = TestContextFactory.Create();
+        db.Proizvod.Add(new Proizvod { Id = 5, Cijena = 125 });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        var controller = new ProizvodController(db);
+        controller.ModelState.AddModelError(nameof(Proizvod.Cijena), "Cijena mora biti pozitivna.");
+        var pokusaj = new Proizvod { Id = 5, Cijena = -1 };
+
+        var rezultat = (ViewResult)await controller.Edit(5, pokusaj);
+
+        Assert.AreSame(pokusaj, rezultat.Model);
+        Assert.AreEqual(125d, (await db.Proizvod.SingleAsync()).Cijena);
+    }
+
+    [TestMethod]
+    public async Task Delete_PostojeciId_VracaModelZaPotvrduBezBrisanja()
+    {
+        await using var db = TestContextFactory.Create();
+        db.Proizvod.Add(new Proizvod { Id = 5 });
+        await db.SaveChangesAsync();
+
+        var rezultat = (ViewResult)await new ProizvodController(db).Delete(5);
+
+        Assert.AreEqual(5, ((Proizvod)rezultat.Model!).Id);
+        Assert.IsTrue(await db.Proizvod.AnyAsync(p => p.Id == 5));
+    }
+
+    [TestMethod]
+    [DataRow(null)]
+    [DataRow(404)]
+    public async Task Delete_NemaProizvoda_VracaNotFound(int? id)
+    {
+        await using var db = TestContextFactory.Create();
+
+        var rezultat = await new ProizvodController(db).Delete(id);
+
+        Assert.IsInstanceOfType<NotFoundResult>(rezultat);
     }
 }

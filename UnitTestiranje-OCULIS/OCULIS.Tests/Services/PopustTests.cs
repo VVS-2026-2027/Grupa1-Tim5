@@ -97,4 +97,49 @@ public class PopustTests
 
         await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => servis.IzracunajPopustAsync("nema", 1));
     }
+
+    [TestMethod]
+    public async Task IzracunajPopustAsync_VisePrimjenjivihPopusta_BiraNajveciIZaokruzujeIznos()
+    {
+        await using var db = TestContextFactory.Create();
+        var kupac = new Korisnik { Id = "kupac", BrojNarudzbi = 10 };
+        var korpa = new Korpa { Id = 3, Korisnik = kupac };
+        var drugaKorpa = new Korpa { Id = 4, Korisnik = kupac };
+        var proizvod = new Proizvod { Id = 8, Naziv = "Okvir" };
+        db.StavkaKorpe.AddRange(
+            new StavkaKorpe { Korpa = korpa, Proizvod = proizvod, Kolicina = 3, Cijena = 19.99 },
+            new StavkaKorpe { Korpa = drugaKorpa, Proizvod = proizvod, Kolicina = 4, Cijena = 100 });
+        var sada = DateTime.Now;
+        db.Akcija.Add(new Akcija
+        {
+            Id = 12, Naziv = "Popust za okvir", Proizvod = proizvod, PopustPostotak = 12,
+            DatumPocetka = sada.AddDays(-1), DatumZavrsetka = sada.AddDays(1)
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        var servis = new PopustKalkulatorService(db,
+            [new KolicinaPopustStrategija(), new AkcijaPopustStrategija(), new LojalnostPopustStrategija()]);
+
+        var rezultat = await servis.IzracunajPopustAsync(kupac.Id, 3);
+
+        Assert.AreEqual(59.97d, rezultat.OsnovnaCijena, 0.00001);
+        Assert.AreEqual(15d, rezultat.PopustPostotak);
+        Assert.AreEqual(9d, rezultat.PopustIznos);
+        Assert.AreEqual(50.97d, rezultat.UkupnaCijena);
+        CollectionAssert.AreEqual(new[] { "Količinski popust: 7%", "Akcijski popust: 12%", "Lojalnost korisnika: 15%" },
+            rezultat.PrimijenjeniPopusti.ToArray());
+    }
+
+    [TestMethod]
+    public void IzracunajPopustPostotak_AktivnaAkcijaZaDrugiProizvod_VracaNulu()
+    {
+        var sada = DateTime.Now;
+        var akcija = new Akcija { IdProizvod = 2, PopustPostotak = 20,
+            DatumPocetka = sada.AddDays(-1), DatumZavrsetka = sada.AddDays(1) };
+
+        var rezultat = new AkcijaPopustStrategija().IzracunajPopustPostotak(
+            new Korisnik(), [new StavkaKorpe { IdProizvod = 1 }], [akcija]);
+
+        Assert.AreEqual(0d, rezultat);
+    }
 }

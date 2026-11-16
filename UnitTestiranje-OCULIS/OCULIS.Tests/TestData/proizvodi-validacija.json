@@ -1,0 +1,6 @@
+[
+  {"Naziv":"Okvir","DuzinaOpisa":1000,"Cijena":0.01,"DuzinaProizvodjaca":100,"Zaliha":0,"Greske":[]},
+  {"Naziv":"Okvir","DuzinaOpisa":1001,"Cijena":0.01,"DuzinaProizvodjaca":100,"Zaliha":0,"Greske":["Opis"]},
+  {"Naziv":"Okvir","DuzinaOpisa":1,"Cijena":0.009,"DuzinaProizvodjaca":101,"Zaliha":-1,"Greske":["Cijena","Proizvodjac","DostupnaKolicina"]},
+  {"Naziv":" ","DuzinaOpisa":0,"Cijena":30,"DuzinaProizvodjaca":0,"Zaliha":1,"Greske":["Naziv","Opis","Proizvodjac"]}
+]
