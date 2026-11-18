@@ -9,6 +9,7 @@ namespace OCULIS.Services.Termin
 
     public class OtkazivanjeTerminaServis : IOtkazivanjeTerminaServis
     {
+        private static readonly TimeSpan MinimalnoVrijemeDoTermina = TimeSpan.FromHours(24);
         private readonly TimeProvider _sat;
 
         public OtkazivanjeTerminaServis(TimeProvider sat)
@@ -25,7 +26,7 @@ namespace OCULIS.Services.Termin
 
             var pocetakTermina = termin.Datum.Date.Add(termin.Vrijeme);
             var sada = _sat.GetLocalNow().DateTime;
-            return pocetakTermina - sada >= TimeSpan.FromHours(24);
+            return pocetakTermina - sada >= MinimalnoVrijemeDoTermina;
         }
     }
 }
