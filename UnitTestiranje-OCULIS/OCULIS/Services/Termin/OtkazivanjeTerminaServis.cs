@@ -9,13 +9,23 @@ namespace OCULIS.Services.Termin
 
     public class OtkazivanjeTerminaServis : IOtkazivanjeTerminaServis
     {
+        private readonly TimeProvider _sat;
+
         public OtkazivanjeTerminaServis(TimeProvider sat)
         {
+            _sat = sat;
         }
 
         public bool MozeOtkazati(TerminPregleda termin)
         {
-            throw new NotImplementedException();
+            ArgumentNullException.ThrowIfNull(termin);
+
+            if (termin.Status != StatusTermina.Zakazan)
+                return false;
+
+            var pocetakTermina = termin.Datum.Date.Add(termin.Vrijeme);
+            var sada = _sat.GetLocalNow().DateTime;
+            return pocetakTermina - sada >= TimeSpan.FromHours(24);
         }
     }
 }
