@@ -4,12 +4,14 @@ using OCULIS.Services.Termin;
 namespace OCULIS.Tests;
 
 [TestClass]
+[TestCategory("Clan3")]
 public class RasporedTests
 {
     [TestMethod]
     [DataRow(StatusTermina.Zakazan, false, false)]
     [DataRow(StatusTermina.Zakazan, true, true)]
     [DataRow(StatusTermina.Otkazan, false, true)]
+    [DataRow(StatusTermina.Realizovan, false, false)]
     public async Task JeTerminDostupanAsync_PostojeciTermin_UvazavaStatusIIzuzetiId(StatusTermina status, bool izuzmi, bool ocekujeDostupnost)
     {
         await using var db = TestContextFactory.Create();

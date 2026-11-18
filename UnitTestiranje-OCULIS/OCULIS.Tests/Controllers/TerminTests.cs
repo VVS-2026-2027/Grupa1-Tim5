@@ -9,6 +9,7 @@ using OCULIS.Services.Termin;
 namespace OCULIS.Tests;
 
 [TestClass]
+[TestCategory("Clan3")]
 public class TerminTests
 {
     [TestMethod]
@@ -43,5 +44,39 @@ public class TerminTests
         var json = (JsonResult)rezultat;
         CollectionAssert.AreEqual(new[] { "08:00", "17:30" }, ((IEnumerable<string>)json.Value!).ToArray());
         servis.VerifyAll();
+    }
+
+    public static IEnumerable<object[]> GraniceRadnogVremena()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "TestData", "termini-clan3.csv");
+        return File.ReadLines(path).Skip(1).Select(line =>
+        {
+            var parts = line.Split(',');
+            return new object[] { int.Parse(parts[0]), int.Parse(parts[1]), bool.Parse(parts[2]) };
+        });
+    }
+
+    [TestMethod]
+    [DynamicData(nameof(GraniceRadnogVremena), DynamicDataSourceType.Method)]
+    public async Task JeTerminDostupanAsync_UlaziIzCsv(int sat, int minuta, bool ocekivano)
+    {
+        await using var db = TestContextFactory.Create();
+        var dostupno = await new TerminServis(db).JeTerminDostupanAsync(1, new DateTime(2027, 1, 4), new TimeSpan(sat, minuta, 0));
+        Assert.AreEqual(ocekivano, dostupno);
+    }
+
+    [TestMethod]
+    public async Task DostupniTermini_GreskaServisa_PropagiraIzuzetak()
+    {
+        await using var db = TestContextFactory.Create();
+        var datum = new DateTime(2027, 1, 4);
+        var servis = new Mock<ITerminServis>();
+        var greska = new InvalidOperationException("Raspored nije dostupan.");
+        servis.Setup(s => s.DohvatiDostupneTermineAsync(2, datum)).ThrowsAsync(greska);
+        var controller = new TerminPregledaController(db, Clan3TestContext.Users().Object,
+            servis.Object, Mock.Of<IObavijestServis>());
+
+        Assert.AreSame(greska, await Assert.ThrowsExactlyAsync<InvalidOperationException>(
+            () => controller.DostupniTermini(2, datum)));
     }
 }
