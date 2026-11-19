@@ -18,7 +18,7 @@ namespace OCULIS.Tests;
 public class OtkaziTerminEndpointTests
 {
     private static MethodInfo Akcija => typeof(TerminPregledaController)
-        .GetMethod("Otkazi", [typeof(int), typeof(IOtkazivanjeTerminaServis)])
+        .GetMethod(nameof(TerminPregledaController.Otkazi), [typeof(int), typeof(IOtkazivanjeTerminaServis)])
         ?? throw new AssertFailedException("Nedostaje akcija Otkazi(int, IOtkazivanjeTerminaServis).");
 
     [TestMethod]
@@ -38,7 +38,7 @@ public class OtkaziTerminEndpointTests
         var politika = new Mock<IOtkazivanjeTerminaServis>(MockBehavior.Strict);
         var controller = Kreiraj(db, null);
 
-        Assert.IsInstanceOfType<ChallengeResult>(await Pozovi(controller, termin.Id, politika.Object));
+        Assert.IsInstanceOfType<ChallengeResult>(await controller.Otkazi(termin.Id, politika.Object));
         Assert.AreEqual(StatusTermina.Zakazan, termin.Status);
         politika.VerifyNoOtherCalls();
     }
@@ -50,7 +50,7 @@ public class OtkaziTerminEndpointTests
         var politika = new Mock<IOtkazivanjeTerminaServis>(MockBehavior.Strict);
         var controller = Kreiraj(db, new Korisnik());
 
-        Assert.IsInstanceOfType<NotFoundResult>(await Pozovi(controller, 123, politika.Object));
+        Assert.IsInstanceOfType<NotFoundResult>(await controller.Otkazi(123, politika.Object));
         politika.VerifyNoOtherCalls();
     }
 
@@ -62,7 +62,7 @@ public class OtkaziTerminEndpointTests
         var politika = new Mock<IOtkazivanjeTerminaServis>(MockBehavior.Strict);
         var controller = Kreiraj(db, new Korisnik());
 
-        Assert.IsInstanceOfType<ForbidResult>(await Pozovi(controller, termin.Id, politika.Object));
+        Assert.IsInstanceOfType<ForbidResult>(await controller.Otkazi(termin.Id, politika.Object));
         db.ChangeTracker.Clear();
         Assert.AreEqual(StatusTermina.Zakazan, (await db.TerminPregleda.FindAsync(termin.Id))!.Status);
         politika.VerifyNoOtherCalls();
@@ -80,7 +80,7 @@ public class OtkaziTerminEndpointTests
         politika.Setup(p => p.MozeOtkazati(termin)).Returns(dozvoljeno);
         var controller = Kreiraj(db, korisnik);
 
-        var rezultat = await Pozovi(controller, termin.Id, politika.Object);
+        var rezultat = await controller.Otkazi(termin.Id, politika.Object);
 
         politika.Verify(p => p.MozeOtkazati(termin), Times.Once);
         db.ChangeTracker.Clear();
@@ -117,7 +117,7 @@ public class OtkaziTerminEndpointTests
         var controller = Kreiraj(db, korisnik);
         kvar.Aktivan = true;
 
-        var rezultat = (ObjectResult)await Pozovi(controller, termin.Id, politika.Object);
+        var rezultat = (ObjectResult)await controller.Otkazi(termin.Id, politika.Object);
 
         Assert.AreEqual(StatusCodes.Status503ServiceUnavailable, rezultat.StatusCode);
         Assert.AreEqual(StatusTermina.Zakazan, termin.Status);
@@ -142,9 +142,6 @@ public class OtkaziTerminEndpointTests
         users.Setup(m => m.GetUserAsync(controller.User)).ReturnsAsync(korisnik!);
         return controller;
     }
-
-    private static Task<IActionResult> Pozovi(TerminPregledaController controller, int id,
-        IOtkazivanjeTerminaServis politika) => (Task<IActionResult>)Akcija.Invoke(controller, [id, politika])!;
 
     private sealed class KvarUpisa : SaveChangesInterceptor
     {

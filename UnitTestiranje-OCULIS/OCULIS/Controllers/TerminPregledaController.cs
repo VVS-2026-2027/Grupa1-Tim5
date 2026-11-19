@@ -121,7 +121,7 @@ namespace OCULIS.Controllers
             if (!politika.MozeOtkazati(termin))
                 return Conflict("Termin se više ne može otkazati.");
 
-            var prethodniStatus = termin.Status;
+            var status = _context.Entry(termin).Property(t => t.Status);
             termin.Status = StatusTermina.Otkazan;
             try
             {
@@ -129,7 +129,8 @@ namespace OCULIS.Controllers
             }
             catch (DbUpdateException)
             {
-                termin.Status = prethodniStatus;
+                status.CurrentValue = status.OriginalValue;
+                status.IsModified = false;
                 return StatusCode(StatusCodes.Status503ServiceUnavailable,
                     "Otkazivanje termina nije spremljeno. Pokušajte ponovo.");
             }
