@@ -1,16 +1,31 @@
+@using System.Security.Claims
 @model OCULIS.Models.TerminPregleda
+@inject OCULIS.Services.Termin.IOtkazivanjeTerminaServis PolitikaOtkazivanja
 
 @{
     ViewData["Title"] = "Termin pregleda";
+
+    var otkazan = Model.Status == StatusTermina.Otkazan;
+
+    var vlastitiTermin = User.IsInRole(Uloge.Kupac)
+        && User.FindFirst(ClaimTypes.NameIdentifier)?.Value == Model.IdKorisnik;
 }
 
 <div class="zakazi-page">
     <div class="filter-card zakazi-card">
 
         <div class="reservation-header">
-            <span>TERMIN USPJEŠNO ZAKAZAN</span>
+            <span>@(otkazan ? "TERMIN OTKAZAN" : "DETALJI TERMINA")</span>
             <h2>TERMIN PREGLEDA</h2>
-            <p>Vaš termin pregleda vida je evidentiran u sistemu.</p>
+
+            @if (otkazan)
+            {
+                <p>Vaš termin pregleda vida je otkazan.</p>
+            }
+            else
+            {
+                <p>Podaci o vašem terminu pregleda vida.</p>
+            }
         </div>
 
         <div class="termin-details-grid">
@@ -40,12 +55,40 @@
             </div>
         </div>
 
+        @if (vlastitiTermin && Model.Status == StatusTermina.Zakazan)
+        {
+            if (PolitikaOtkazivanja.MozeOtkazati(Model))
+            {
+                <form asp-controller="TerminPregleda"
+                      asp-action="Otkazi"
+                      method="post"
+                      class="text-center mt-4">
+
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden" name="id" value="@Model.Id" />
+
+                    <button type="submit" class="btn btn-danger">
+                        Otkaži termin
+                    </button>
+                </form>
+            }
+            else
+            {
+                <p class="text-center text-muted mt-4">
+                    Termin se može otkazati najmanje 24 sata prije početka.
+                </p>
+            }
+        }
+
         <div class="d-flex justify-content-center gap-2 flex-wrap mt-4">
             <a asp-action="Index" class="btn btn-oculis">
                 Moji termini
             </a>
 
-            <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">
+            <a asp-controller="Home"
+               asp-action="Index"
+               class="btn btn-secondary">
                 Nazad na početnu
             </a>
         </div>
