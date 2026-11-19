@@ -1,0 +1,5 @@
+[
+  { "requestId": null, "showRequestId": false },
+  { "requestId": "", "showRequestId": false },
+  { "requestId": "trace-123", "showRequestId": true }
+]
