@@ -13,6 +13,7 @@ using OCULIS.Services.Placanje;
 namespace OCULIS.Tests;
 
 [TestClass]
+[TestCategory("Clan2")]
 public class PlacanjeControllerTests
 {
     [TestMethod]
@@ -102,6 +103,49 @@ public class PlacanjeControllerTests
         {
             Assert.IsInstanceOfType<NotFoundResult>(rezultat);
         }
+    }
+
+    [TestMethod]
+    public async Task Plati_UspjesnoPlacenaNarudzba_PreusmjeravaBezPonovnogPlacanja()
+    {
+        await using var db = TestContextFactory.Create();
+        var kupac = new Korisnik { Id = "kupac" };
+        db.Narudzba.Add(new Narudzba { Id = 22, Korisnik = kupac, UkupnaCijena = 20 });
+        db.Placanje.Add(new Placanje { IdNarudzba = 22, StatusPlacanja = StatusPlacanja.Uspjesno, Iznos = 20 });
+        await db.SaveChangesAsync();
+        var factory = new Mock<IPlacanjeServisFactory>(MockBehavior.Strict);
+        var controller = Controller(db, kupac, factory.Object);
+
+        var result = (RedirectToActionResult)await controller.Plati(22);
+
+        Assert.AreEqual("Details", result.ActionName);
+        Assert.AreEqual("Narudzba", result.ControllerName);
+        Assert.AreEqual(22, result.RouteValues!["id"]);
+        factory.VerifyNoOtherCalls();
+    }
+
+    [TestMethod]
+    public async Task PotvrdiGotovinu_PostojecaUplata_PotvrdiPlacanjeINarudzbu()
+    {
+        await using var db = TestContextFactory.Create();
+        db.Narudzba.Add(new Narudzba { Id = 24, Status = StatusNarudzbe.Zaprimljena });
+        db.Placanje.Add(new Placanje { Id = 6, IdNarudzba = 24, StatusPlacanja = StatusPlacanja.NaCekanju });
+        await db.SaveChangesAsync();
+        var controller = Controller(db, new Korisnik { Id = "staff" }, Mock.Of<IPlacanjeServisFactory>());
+
+        var result = (RedirectToActionResult)await controller.PotvrdiGotovinu(6);
+
+        Assert.AreEqual("Details", result.ActionName);
+        Assert.AreEqual(StatusPlacanja.Uspjesno, (await db.Placanje.FindAsync(6))!.StatusPlacanja);
+        Assert.AreEqual(StatusNarudzbe.UObradi, (await db.Narudzba.FindAsync(24))!.Status);
+    }
+
+    [TestMethod]
+    public async Task PotvrdiGotovinu_NepostojecaUplata_NotFound()
+    {
+        await using var db = TestContextFactory.Create();
+        var controller = Controller(db, new Korisnik { Id = "staff" }, Mock.Of<IPlacanjeServisFactory>());
+        Assert.IsInstanceOfType<NotFoundResult>(await controller.PotvrdiGotovinu(999));
     }
 
     private static PlacanjeController Controller(ApplicationDbContext db, Korisnik kupac, IPlacanjeServisFactory factory)

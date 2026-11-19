@@ -6,6 +6,7 @@ using OCULIS.Services.Placanje;
 namespace OCULIS.Tests;
 
 [TestClass]
+[TestCategory("Clan2")]
 public class PlacanjeTests
 {
     public sealed record KarticniScenarij(string? Kartica, string Status);

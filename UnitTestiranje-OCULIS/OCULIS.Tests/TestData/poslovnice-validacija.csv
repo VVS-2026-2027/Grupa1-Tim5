@@ -1,0 +1,4 @@
+Naziv,Adresa,Telefon,RadnoVrijeme,Validno
+Sarajevo,Maršala Tita 10,033-123-456,Pon-Pet 09-17,true
+,,,+,false
+Mostar,Ulica 1,036-555-555,Pon-Sub 08-16,true
