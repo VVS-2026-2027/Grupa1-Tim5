@@ -102,17 +102,15 @@ namespace OCULIS.Controllers
         public async Task<IActionResult> Checkout()
         {
             var korpa = await DohvatiIliKreirajKorpuAsync();
-            var stavke = await _context.StavkaKorpe.Where(s => s.IdKorpa == korpa.Id).ToListAsync();
+            var modelKorpe = await MapirajKorpuAsync(korpa);
 
-            if (!stavke.Any())
+            if (!modelKorpe.Stavke.Any())
             {
                 TempData["Error"] = "Korpa je prazna.";
                 return RedirectToAction(nameof(Index));
             }
 
-            var user = await _userManager.GetUserAsync(User);
-            var popust = await _popustService.IzracunajPopustAsync(user!.Id, korpa.Id);
-
+            var popust = modelKorpe.Popust!;
             var dostavaServis = new DostavaServis();
 
             var cijenaDostave = dostavaServis.IzracunajCijenuDostave(
@@ -129,7 +127,7 @@ namespace OCULIS.Controllers
             {
                 KorpaId = korpa.Id,
                 Popust = popust,
-                Korpa = await MapirajKorpuAsync(korpa)
+                Korpa = modelKorpe
             });
         }
 
