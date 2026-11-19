@@ -13,7 +13,12 @@ namespace OCULIS.Tests;
 public class CheckoutDostavaTests
 {
     [TestMethod]
-    public async Task Checkout_IznosNakonPopustaIspod100_UkljucujeDostavu()
+    [DataRow(99.99, 7.0, 106.99)]
+    [DataRow(100.0, 0.0, 100.0)]
+    public async Task Checkout_IznosNakonPopusta_PripremaDostavuIUkupno(
+        double iznosNakonPopusta,
+        double ocekivanaDostava,
+        double ocekivanoUkupno)
     {
         // Arrange - priprema
         await using var db = TestContextFactory.Create();
@@ -27,10 +32,10 @@ public class CheckoutDostavaTests
             Proizvod = new Proizvod
             {
                 Naziv = "Okvir",
-                Cijena = 111.10
+                Cijena = 125
             },
             Kolicina = 1,
-            Cijena = 111.10
+            Cijena = 125
         });
 
         await db.SaveChangesAsync();
@@ -41,10 +46,8 @@ public class CheckoutDostavaTests
         popust.Setup(p => p.IzracunajPopustAsync(kupac.Id, korpa.Id))
             .ReturnsAsync(new PopustRezultatViewModel
             {
-                OsnovnaCijena = 111.10,
-                PopustPostotak = 10,
-                PopustIznos = 11.11,
-                UkupnaCijena = 99.99
+                OsnovnaCijena = 125,
+                UkupnaCijena = iznosNakonPopusta
             });
 
         var kontroler = new KorpaController(
@@ -60,18 +63,16 @@ public class CheckoutDostavaTests
         var rezultat = (ViewResult)await kontroler.Checkout();
 
         // Assert - provjera sažetka
-        Assert.IsNotNull(
-            rezultat.ViewData["CijenaDostave"],
-            "Checkout treba pripremiti iznos dostave.");
-
-        Assert.AreEqual(
-            7d,
-            (double)rezultat.ViewData["CijenaDostave"]!);
-
+        Assert.IsNotNull(rezultat.ViewData["CijenaDostave"]);
         Assert.IsNotNull(rezultat.ViewData["UkupnoSaDostavom"]);
 
         Assert.AreEqual(
-            106.99d,
+            ocekivanaDostava,
+            (double)rezultat.ViewData["CijenaDostave"]!,
+            0.001);
+
+        Assert.AreEqual(
+            ocekivanoUkupno,
             (double)rezultat.ViewData["UkupnoSaDostavom"]!,
             0.001);
     }
