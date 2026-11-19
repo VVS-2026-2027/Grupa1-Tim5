@@ -36,10 +36,25 @@
                 <strong>-@Model.Popust.PopustIznos.ToString("F2") KM</strong>
             </div>
 
-            <div class="checkout-total">
-                <span>Ukupno</span>
-                <strong>@Model.Popust.UkupnaCijena.ToString("F2") KM</strong>
-            </div>
+            @if (ViewData["CijenaDostave"] is double cijenaDostave && ViewData["UkupnoSaDostavom"] is double ukupnoSaDostavom)
+            {
+                <div class="checkout-summary-line">
+                    <span>Dostava</span>
+                    <strong>@cijenaDostave.ToString("F2") KM</strong>
+                </div>
+
+                <div class="checkout-total">
+                    <span>Ukupno s dostavom</span>
+                    <strong>@ukupnoSaDostavom.ToString("F2") KM</strong>
+                </div>
+            }
+            else
+            {
+                <p class="text-danger">
+                    Konačan iznos trenutno nije dostupan.
+                    Provjerite poruke o greškama prije nastavka.
+                </p>
+            }
         </div>
 
         <div class="checkout-card checkout-confirm-card">
