@@ -107,6 +107,37 @@ namespace OCULIS.Controllers
             return View(model);
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = Uloge.Kupac)]
+        public async Task<IActionResult> Otkazi(int id, [FromServices] IOtkazivanjeTerminaServis politika)
+        {
+            var korisnik = await _userManager.GetUserAsync(User);
+            if (korisnik == null) return Challenge();
+
+            var termin = await _context.TerminPregleda.FindAsync(id);
+            if (termin == null) return NotFound();
+            if (termin.IdKorisnik != korisnik.Id) return Forbid();
+            if (!politika.MozeOtkazati(termin))
+                return Conflict("Termin se više ne može otkazati.");
+
+            var prethodniStatus = termin.Status;
+            termin.Status = StatusTermina.Otkazan;
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                termin.Status = prethodniStatus;
+                return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                    "Otkazivanje termina nije spremljeno. Pokušajte ponovo.");
+            }
+
+            TempData["Success"] = "Termin uspješno otkazan.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
         [HttpGet]
         [Authorize(Roles = Uloge.Kupac)]
         public async Task<IActionResult> DostupniTermini(int poslovnicaId, DateTime datum)

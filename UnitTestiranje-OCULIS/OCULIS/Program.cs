@@ -45,6 +45,8 @@ builder.Services.AddScoped<IPlacanjeStrategija, GotovinskoPlacanjeStrategija>();
 builder.Services.AddScoped<IPlacanjeServisFactory, PlacanjeServisFactory>();
 builder.Services.AddScoped<IObavijestServis, ObavijestServis>();
 builder.Services.AddScoped<ITerminServis, TerminServis>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IOtkazivanjeTerminaServis, OtkazivanjeTerminaServis>();
 builder.Services.AddTransient<IEmailSender, EmailService>();
 
 builder.Services.AddControllersWithViews();
