@@ -7,7 +7,7 @@ using OCULIS.Data;
 using OCULIS.Models;
 using OCULIS.Models.ViewModels;
 using OCULIS.Services.Popust;
-
+using OCULIS.Services.Dostava;
 namespace OCULIS.Controllers
 {
     [Authorize(Roles = $"{Uloge.Kupac},{Uloge.Administrator}")]
@@ -112,6 +112,18 @@ namespace OCULIS.Controllers
 
             var user = await _userManager.GetUserAsync(User);
             var popust = await _popustService.IzracunajPopustAsync(user!.Id, korpa.Id);
+
+            var dostavaServis = new DostavaServis();
+
+            var cijenaDostave = dostavaServis.IzracunajCijenuDostave(
+                popust.UkupnaCijena);
+
+            ViewData["CijenaDostave"] = cijenaDostave;
+
+            ViewData["UkupnoSaDostavom"] = Math.Round(
+                popust.UkupnaCijena + cijenaDostave,
+                2,
+                MidpointRounding.ToEven);
 
             return View(new NarudzbaCheckoutViewModel
             {
