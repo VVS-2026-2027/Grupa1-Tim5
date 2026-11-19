@@ -1,0 +1,14 @@
+[
+  {
+    "MinimalnaDuzina": 6,
+    "OcekivanaPoruka": "Lozinka mora imati najmanje 6 znakova."
+  },
+  {
+    "MinimalnaDuzina": 8,
+    "OcekivanaPoruka": "Lozinka mora imati najmanje 8 znakova."
+  },
+  {
+    "MinimalnaDuzina": 12,
+    "OcekivanaPoruka": "Lozinka mora imati najmanje 12 znakova."
+  }
+]
