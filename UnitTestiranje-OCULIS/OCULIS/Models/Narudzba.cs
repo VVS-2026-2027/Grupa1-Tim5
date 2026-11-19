@@ -23,6 +23,9 @@ namespace OCULIS.Models
         [Display(Name = "Iznos popusta")]
         public double PopustIznos { get; set; }
 
+        [Display(Name = "Dostava")]
+        public double CijenaDostave { get; set; }
+
         [Display(Name = "Ukupna cijena")]
         public double UkupnaCijena { get; set; }
 

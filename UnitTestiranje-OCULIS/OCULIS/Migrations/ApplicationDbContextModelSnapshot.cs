@@ -343,6 +343,9 @@ namespace OCULIS.Migrations
                     b.Property<DateTime>("DatumNarudzbe")
                         .HasColumnType("datetime2");
 
+                    b.Property<double>("CijenaDostave")
+                        .HasColumnType("float");
+
                     b.Property<string>("IdKorisnik")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");

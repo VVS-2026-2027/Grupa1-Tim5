@@ -6,6 +6,7 @@ using OCULIS.Constants;
 using OCULIS.Data;
 using OCULIS.Models;
 using OCULIS.Models.ViewModels;
+using OCULIS.Services.Dostava;
 using OCULIS.Services.Obavijest;
 using OCULIS.Services.Popust;
 
@@ -18,17 +19,20 @@ namespace OCULIS.Controllers
         private readonly UserManager<Korisnik> _userManager;
         private readonly IPopustKalkulatorService _popustService;
         private readonly IObavijestServis _obavijestServis;
+        private readonly IDostavaServis _dostavaServis;
 
         public NarudzbaController(
             ApplicationDbContext context,
             UserManager<Korisnik> userManager,
             IPopustKalkulatorService popustService,
-            IObavijestServis obavijestServis)
+            IObavijestServis obavijestServis,
+            IDostavaServis dostavaServis)
         {
             _context = context;
             _userManager = userManager;
             _popustService = popustService;
             _obavijestServis = obavijestServis;
+            _dostavaServis = dostavaServis;
         }
 
         public async Task<IActionResult> Index()
@@ -86,27 +90,25 @@ namespace OCULIS.Controllers
 
             if (!ModelState.IsValid)
             {
-                model.Popust = popust;
-                model.Korpa = new KorpaViewModel
-                {
-                    KorpaId = korpa.Id,
-                    UkupnaCijena = korpa.Stavke.Sum(s => s.Cijena * s.Kolicina),
-                    Popust = popust,
-                    Stavke = korpa.Stavke.Select(s => new StavkaKorpeViewModel
-                    {
-                        Id = s.Id,
-                        IdProizvod = s.IdProizvod,
-                        NazivProizvoda = s.Proizvod.Naziv,
-                        Kolicina = s.Kolicina,
-                        Cijena = s.Cijena
-                    }).ToList()
-                };
-
+                PopuniCheckoutModel(model, korpa, popust);
                 return View("~/Views/Korpa/Checkout.cshtml", model);
             }
 
             var punaAdresa =
                 $"{model.AdresaIsporuke}, {model.Grad}, {model.PostanskiBroj}, Tel: {model.Telefon}";
+            double cijenaDostave;
+            try
+            {
+                cijenaDostave = _dostavaServis.IzracunajCijenuDostave(popust.UkupnaCijena);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                ModelState.AddModelError(nameof(model.Popust), "Iznos narudžbe nije ispravan. Narudžba nije kreirana.");
+                PopuniCheckoutModel(model, korpa, popust);
+                return View("~/Views/Korpa/Checkout.cshtml", model);
+            }
+
+            var ukupnaCijena = Math.Round(popust.UkupnaCijena + cijenaDostave, 2, MidpointRounding.ToEven);
 
             var narudzba = new Narudzba
             {
@@ -115,7 +117,8 @@ namespace OCULIS.Controllers
                 OsnovnaCijena = popust.OsnovnaCijena,
                 PopustPostotak = popust.PopustPostotak,
                 PopustIznos = popust.PopustIznos,
-                UkupnaCijena = popust.UkupnaCijena,
+                CijenaDostave = cijenaDostave,
+                UkupnaCijena = ukupnaCijena,
                 AdresaIsporuke = punaAdresa,
                 IdKorisnik = user.Id,
                 IdKorpa = korpa.Id
@@ -185,6 +188,25 @@ namespace OCULIS.Controllers
 
             var user = await _userManager.GetUserAsync(User);
             return user != null && narudzba.IdKorisnik == user.Id;
+        }
+
+        private static void PopuniCheckoutModel(NarudzbaCheckoutViewModel model, Korpa korpa, PopustRezultatViewModel popust)
+        {
+            model.Popust = popust;
+            model.Korpa = new KorpaViewModel
+            {
+                KorpaId = korpa.Id,
+                UkupnaCijena = korpa.Stavke.Sum(s => s.Cijena * s.Kolicina),
+                Popust = popust,
+                Stavke = korpa.Stavke.Select(s => new StavkaKorpeViewModel
+                {
+                    Id = s.Id,
+                    IdProizvod = s.IdProizvod,
+                    NazivProizvoda = s.Proizvod.Naziv,
+                    Kolicina = s.Kolicina,
+                    Cijena = s.Cijena
+                }).ToList()
+            };
         }
     }
 }
